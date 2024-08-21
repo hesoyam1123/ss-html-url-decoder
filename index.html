@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shadowsocks Link Decoder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            color: #333;
+        }
+        textarea, input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .result {
+            padding: 10px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .clickable {
+            cursor: pointer;
+            color: #0066cc;
+            text-decoration: underline;
+        }
+        .clickable:hover {
+            color: #004499;
+        }
+    </style>
+</head>
+<body>
+    <h1>Shadowsocks Link Decoder</h1>
+    <p>Enter your Shadowsocks connect link below:</p>
+    <textarea id="ssLink" rows="3" placeholder="ss://..."></textarea>
+    <button onclick="decodeLink()">Decode</button>
+
+    <div id="result" class="result"></div>
+
+    <script>
+        function decodeLink() {
+            const ssLink = document.getElementById('ssLink').value.trim();
+
+            if (!ssLink.startsWith("ss://")) {
+                document.getElementById('result').innerHTML = "<strong>Invalid Shadowsocks link.</strong>";
+                return;
+            }
+
+            let linkWithoutPrefix = ssLink.slice(5);
+            
+            linkWithoutPrefix = linkWithoutPrefix.split('/?')[0];
+            
+
+            const [base64String, serverInfo] = linkWithoutPrefix.split('@');
+
+            try {
+                const decodedAuth = atob(base64String);
+                
+                const [username, password] = decodedAuth.split(':');
+
+                const [hostname, port] = serverInfo.split(':');
+
+                document.getElementById('result').innerHTML = `
+                    <strong>Decoded Information:</strong><br>
+                    <div class="clickable" onclick="copyToClipboard('${hostname}')">Hostname: ${hostname}</div>
+                    <div class="clickable" onclick="copyToClipboard('${port}')">Port: ${port}</div>
+                    <div class="clickable" onclick="copyToClipboard('${username}')">Username: ${username}</div>
+                    <div class="clickable" onclick="copyToClipboard('${password}')">Password: ${password}</div>
+                `;
+            } catch (e) {
+                document.getElementById('result').innerHTML = "<strong>Error decoding the link. Please ensure it is a valid BASE64 encoded Shadowsocks link.</strong>";
+            }
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert(`Copied to clipboard: ${text}`);
+            }).catch(err => {
+                alert('Failed to copy: ', err);
+            });
+        }
+    </script>
+</body>
+</html>
