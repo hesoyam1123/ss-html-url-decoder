@@ -4,85 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shadowsocks Link Decoder</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-            background-color: #f4f4f4;
-            color: #333;
-        }
-        h1 {
-            color: #444;
-        }
-        textarea {
-            width: 100%;
-            padding: 15px;
-            margin: 10px 0;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-            font-size: 16px;
-        }
-        button {
-            padding: 12px 20px;
-            margin-top: 10px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        .result {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            padding: 20px;
-            background-color: #fff;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            margin-top: 20px;
-            font-size: 18px;
-            align-content: center;
-            align-items: flex-start;
-        }
-        .result div {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: relative;
-        }
-        .label {
-            font-weight: bold;
-            margin-right: 10px;
-        }
-        .value {
-            background-color: #f1f1f1;
-            padding: 8px 12px;
-            border-radius: 5px;
-            font-family: monospace;
-            cursor: pointer;
-            flex-grow: 1;
-            text-align: right;
-        }
-        .value:hover {
-            background-color: #e1e1e1;
-        }
-        .tooltip {
-            position: relative;
-            left: 1rem;
-            background-color: rgba(0, 0, 0, 0.7);
-            color: #fff;
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-size: 14px;
-            opacity: 0;
-            transition: opacity 0.3s;
-            white-space: nowrap;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <h1>Shadowsocks Link Decoder</h1>
@@ -91,6 +13,7 @@
     <button onclick="decodeLink()">Decode</button>
 
     <div id="result" class="result"></div>
+    <div id="jsonResult" class="json-output" onclick="copyJsonToClipboard()"></div>
 
     <script>
         function decodeLink() {
@@ -98,6 +21,7 @@
 
             if (!ssLink.startsWith("ss://")) {
                 document.getElementById('result').innerHTML = "<strong>Invalid Shadowsocks link.</strong>";
+                document.getElementById('jsonResult').innerHTML = "";
                 return;
             }
 
@@ -110,13 +34,21 @@
             try {
                 const decodedAuth = atob(base64String);
 
-                const [username, password] = decodedAuth.split(':');
-                const [hostname, port] = serverInfo.split(':');
+                const [method, password] = decodedAuth.split(':');
+                const [address, port] = serverInfo.split(':');
+
+                const lastFiveChars = password.slice(-5);
+                const currentDate = new Date().toLocaleDateString('ru-RU', {
+                    day: '2-digit',
+                    month: '2-digit'
+                }).replace(/\./g, '');
+
+                const tag = `${lastFiveChars}_${currentDate}_ssconv`;
 
                 document.getElementById('result').innerHTML = `
                     <div>
                         <span class="label">Hostname:</span>
-                        <span class="value" onclick="copyToClipboard(this, '${hostname}')">${hostname}</span>
+                        <span class="value" onclick="copyToClipboard(this, '${address}')">${address}</span>
                         <span class="tooltip">Copied!</span>
                     </div>
                     <div>
@@ -125,8 +57,8 @@
                         <span class="tooltip">Copied!</span>
                     </div>
                     <div>
-                        <span class="label">Username:</span>
-                        <span class="value" onclick="copyToClipboard(this, '${username}')">${username}</span>
+                        <span class="label">Method:</span>
+                        <span class="value" onclick="copyToClipboard(this, '${method}')">${method}</span>
                         <span class="tooltip">Copied!</span>
                     </div>
                     <div>
@@ -134,9 +66,43 @@
                         <span class="value" onclick="copyToClipboard(this, '${password}')">${password}</span>
                         <span class="tooltip">Copied!</span>
                     </div>
+                    <div>
+                        <span class="label">Tag:</span>
+                        <span class="value" onclick="copyToClipboard(this, '${tag}')">${tag}</span>
+                        <span class="tooltip">Copied!</span>
+                    </div>
                 `;
+
+                const jsonObject = {
+                    tag: tag,
+                    protocol: "shadowsocks",
+                    settings: {
+                        servers: [
+                            {
+                                address: address,
+                                port: parseInt(port),
+                                password: password,
+                                method: method
+                            }
+                        ]
+                    },
+                    streamSettings: {
+                        network: "tcp",
+                        security: "none",
+                        tcpSettings: {
+                            header: {
+                                type: "none"
+                            }
+                        }
+                    }
+                };
+
+                const jsonString = JSON.stringify(jsonObject, null, 4);
+                document.getElementById('jsonResult').innerHTML = jsonString;
+
             } catch (e) {
                 document.getElementById('result').innerHTML = "<strong>Error decoding the link. Please ensure it is a valid BASE64 encoded Shadowsocks link.</strong>";
+                document.getElementById('jsonResult').innerHTML = "";
             }
         }
 
@@ -149,6 +115,29 @@
                 }, 2000);
             }).catch(err => {
                 console.error('Failed to copy: ', err);
+            });
+        }
+
+        function copyJsonToClipboard() {
+            const jsonText = document.getElementById('jsonResult').innerText;
+            navigator.clipboard.writeText(jsonText).then(() => {
+                const tooltip = document.createElement('span');
+                tooltip.className = 'tooltip';
+                tooltip.style.position = 'absolute';
+                tooltip.style.top = '-25px';
+                tooltip.style.right = '10px';
+                tooltip.style.opacity = '0';
+                tooltip.innerText = 'Copied!';
+                document.getElementById('jsonResult').appendChild(tooltip);
+                setTimeout(() => {
+                    tooltip.style.opacity = 1;
+                }, 100);
+                setTimeout(() => {
+                    tooltip.style.opacity = 0;
+                    tooltip.remove();
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy JSON: ', err);
             });
         }
     </script>
