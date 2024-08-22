@@ -22,21 +22,18 @@
           return;
         }
         let linkWithoutPrefix = ssLink.slice(5);
-        // Обрезаем всё, что идет после порта
         const mainPart = linkWithoutPrefix.split('#')[0].split('/?')[0];
         const [base64String, serverInfo] = mainPart.split('@');
         try {
           const decodedAuth = atob(base64String);
           const [method, password] = decodedAuth.split(':');
           const [address, port] = serverInfo.split(':');
-          // Генерация тега
           const lastFiveChars = password.slice(-5);
           const currentDate = new Date().toLocaleDateString('ru-RU', {
             day: '2-digit',
             month: '2-digit'
-          }).replace(/\./g, ''); // Преобразуем формат даты в dd.mm
-          const tag = `${lastFiveChars}_${currentDate}`;
-          // Выводим расшифрованные данные
+          }).replace(/\./g, '');
+          const tag = `${lastFiveChars}_${currentDate}_ssdecode`;
           document.getElementById('result').innerHTML = `
             
 						<div>
@@ -65,7 +62,6 @@
 							<span class="tooltip">Copied!</span>
 						</div>
         `;
-          // Формируем JSON в соответствии с вашим шаблоном
           const jsonObject = {
             tag: tag,
             protocol: "shadowsocks",
